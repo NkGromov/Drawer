@@ -13,6 +13,7 @@ const Draw: React.FC = () => {
     const [isRectangle, setIsRectangle] = useState<boolean>(false)
     const [isArc, setIsArc] = useState<boolean>(false)
     const [clickCoord, setClickCoord] = useState<number[][] | null>(null)
+    const [color, setColor] = useState<string | null>(null)
     const mouseDown = (e: React.MouseEvent<HTMLElement>) => {
         setIsMouseDown(true)
         if(canvas.current) coord(e.clientX - canvas.current.offsetLeft,e.clientY- canvas.current.offsetTop)
@@ -43,10 +44,7 @@ const Draw: React.FC = () => {
     const Draw = (e: React.MouseEvent<HTMLElement>) =>{
         if(ctx) {
             ctx.lineWidth = 20
-            if(isPencil){
-            ctx.fillStyle = "black";
-            ctx.strokeStyle = "Black"
-            } else if(isEraser) {
+            if(isEraser) {
             ctx.fillStyle = "White";
             ctx.strokeStyle = "White"
             }
@@ -67,6 +65,7 @@ const Draw: React.FC = () => {
             ctx.beginPath()
             ctx.rect(clickCoord[0][0], clickCoord[0][1], width, height);
             ctx.fill();
+            ctx.beginPath();
             setClickCoord(null)
         }
         if(isArc && ctx && clickCoord?.length===2){
@@ -77,16 +76,29 @@ const Draw: React.FC = () => {
             ctx.beginPath()
             ctx.arc(clickCoord[0][0], clickCoord[0][1], radius, 0, Math.PI * 2);
             ctx.fill();
+             ctx.beginPath();
             setClickCoord(null)
         }
     }
     
     useEffect(()=>{
+        changeStates(setIsPencil)
         if(canvas.current) {
             canvas.current.width = window.innerWidth;
             canvas.current.height = window.innerHeight;
         }
-    },[])
+    },[ window.innerWidth ,window.innerHeight])
+    useEffect(()=>{
+        if(ctx){
+        if(isEraser){
+            ctx.fillStyle = 'White';
+            ctx.strokeStyle = 'White';
+        }else {
+            ctx.fillStyle = `${color}`;
+            ctx.strokeStyle = `${color}`;
+        }
+    }
+    },[color,isEraser])
     return (
         <>
         <button onClick={() => changeStates(setIsPencil)}>Карандаш</button>
@@ -94,7 +106,7 @@ const Draw: React.FC = () => {
         <button onClick={() => changeStates(setIsRectangle)}>Квадрат</button>
         <button onClick={() => changeStates(setIsArc)}>Круглик</button>
         <button onClick={clear}>Очитить</button>
-        <input type="color" className="ColorPicker"></input>
+        <input onChange={(value) => setColor(value.target.value)} type="color" className="ColorPicker"></input>
         <canvas onMouseDown={mouseDown} onMouseUp={mouseUp} onMouseMove={Draw} ref={canvas} className="canvas"></canvas>            
         </>
     );
