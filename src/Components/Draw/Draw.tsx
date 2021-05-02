@@ -15,6 +15,7 @@ const Draw: React.FC = () => {
     const [clickCoord, setClickCoord] = useState<number[][] | null>(null)
     const [color, setColor] = useState<string>("Black")
     const [size, setSize] = useState<number>(10)
+
     const mouseDown = (e: React.MouseEvent<HTMLElement>) => {
         setIsMouseDown(true)
         if(canvas.current) coord(e.clientX - canvas.current.offsetLeft,e.clientY- canvas.current.offsetTop)
@@ -25,9 +26,9 @@ const Draw: React.FC = () => {
         if(canvas.current) coord(e.clientX - canvas.current.offsetLeft,e.clientY- canvas.current.offsetTop)
     }
     const coord = (x: number,y:number) =>{
-        setClickCoord(null)
-        if(clickCoord && (isRectangle || isArc)) setClickCoord([...clickCoord, [x,y]])
+        if(clickCoord && (isRectangle || isArc)) setClickCoord([...clickCoord, clickCoord[1] = [x,y]])
         else if(!clickCoord && (isRectangle || isArc)) setClickCoord([[x,y]])
+        
     }
 
     const changeStates = (state: Dispatch<SetStateAction<boolean>>)=>{
@@ -39,42 +40,65 @@ const Draw: React.FC = () => {
     }
 
     const clear = () =>{
-        if(canvas.current && ctx) ctx.clearRect(0, 0, canvas.current.width, canvas.current.width)
+        if(canvas.current && ctx) ctx.clearRect(0, 0, canvas.current.width, canvas.current.height)
+    }
+
+    const calcRectParam = (coordsArray: number[][]) =>{
+        const width: number = coordsArray[1][0] - coordsArray[0][0] 
+        const height: number = coordsArray[1][1] - coordsArray[0][1] 
+        createRect(coordsArray[0][0],coordsArray[0][1], width, height)
+    }
+
+    const createRect = (PosX: number, posY: number, width: number,height: number) =>{
+        ctx?.beginPath()
+        ctx?.rect(PosX, posY, width, height);
+        ctx?.fill();
+    }
+
+    const calcArcParam = (coordsArray: number[][]) =>{
+        const dx: number = coordsArray[1][0] > coordsArray[0][0] ? coordsArray[1][0] - coordsArray[0][0] : coordsArray[0][0] - coordsArray[1][0]
+        const dy: number = coordsArray[1][1] > coordsArray[0][1] ? coordsArray[1][1] - coordsArray[0][1] : coordsArray[0][1] - coordsArray[1][1]
+        const radius: number = Math.sqrt(dx*dx+dy*dy)
+        createArc(coordsArray[0][0],coordsArray[0][1],radius)
+    }
+
+    const createArc = (PosX: number, posY: number, radius: number) =>{
+        ctx?.beginPath()
+        ctx?.arc(PosX, posY, radius, 0, Math.PI * 2);
+        ctx?.fill();
     }
 
     const Draw = (e: React.MouseEvent<HTMLElement>) =>{
-        if( isMouseDown && canvas.current && ctx  && (isPencil || isEraser)){
-            ctx.lineTo(e.clientX - canvas.current.offsetLeft, e.clientY - canvas.current.offsetTop);
+        if(isMouseDown && canvas.current && ctx  && (isPencil || isEraser)){
+            ctx.lineTo(e.clientX - canvas.current.offsetLeft, e.clientY - canvas.current.offsetTop)
             ctx.stroke();
-            ctx.beginPath();
-            ctx.arc(e.clientX - canvas.current.offsetLeft,e.clientY - canvas.current.offsetTop, size/2,0, Math.PI * 2);
-            ctx.fill()
+            createArc(e.clientX - canvas.current.offsetLeft,e.clientY - canvas.current.offsetTop, size/2)
             ctx.beginPath()
             ctx.moveTo(e.clientX - canvas.current.offsetLeft, e.clientY - canvas.current.offsetTop);
         }
-        if(isRectangle && ctx && clickCoord?.length===2){
-            clickCoord.sort((a: number[], b: number[]) => a[0] - b[0] || a[1] - b[1])
-            let width: number = clickCoord[1][0] - clickCoord[0][0] 
-            let height: number = clickCoord[1][1] - clickCoord[0][1] 
-            ctx.beginPath()
-            ctx.rect(clickCoord[0][0], clickCoord[0][1], width, height);
-            ctx.fill();
-            ctx.beginPath();
-            setClickCoord(null)
-        }
-        if(isArc && ctx && clickCoord?.length===2){
 
-            let dx: number = clickCoord[1][0] > clickCoord[0][0] ? clickCoord[1][0] - clickCoord[0][0] : clickCoord[0][0] - clickCoord[1][0]
-            let dy: number = clickCoord[1][1] > clickCoord[0][1] ? clickCoord[1][1] - clickCoord[0][1] : clickCoord[0][1] - clickCoord[1][1]
-            let radius: number = Math.sqrt(dx*dx+dy*dy)
-            ctx.beginPath()
-            ctx.arc(clickCoord[0][0], clickCoord[0][1], radius, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.beginPath();
-            setClickCoord(null)
+        if(isMouseDown && canvas.current && ctx  && clickCoord && (isRectangle || isArc)){
+            if(clickCoord.length === 2){
+                const prevWidth: number = clickCoord[1][0] - clickCoord[0][0] 
+                const prevHeight: number = clickCoord[1][1] - clickCoord[0][1] 
+                ctx.clearRect(clickCoord[0][0], clickCoord[0][1], prevWidth, prevHeight)
+            }
+            const newArray = clickCoord.splice(1,1)
+            setClickCoord(newArray)
+            setClickCoord([...clickCoord, clickCoord[1] = [e.clientX - canvas.current.offsetLeft, e.clientY - canvas.current.offsetTop]])
+            if(isRectangle) calcRectParam(clickCoord)
+            else if (isArc)  calcArcParam(clickCoord)
+          
         }
+
+        if(isRectangle && ctx && clickCoord?.length === 2 && !isMouseDown) calcRectParam(clickCoord)
+        
+        if(isArc && ctx && clickCoord?.length===2 && !isMouseDown) calcArcParam(clickCoord)
+        
     }
-
+    useEffect(()=>{
+        if(!isMouseDown) setClickCoord(null)
+    },[isMouseDown])
     useEffect(()=>{
         changeStates(setIsPencil)
         if(canvas.current) {
@@ -106,7 +130,7 @@ const Draw: React.FC = () => {
         <button onClick={clear}>Очитить</button>
         <input onChange={(value) => setColor(value.target.value)} type="color" className="ColorPicker"></input>
         <input onChange={(value) => setSize(+value.target.value)} type="range"  min="2" max="40" step="1" value={size}></input>
-        <canvas onMouseDown={mouseDown} onMouseUp={mouseUp} onMouseMove={Draw} onMouseLeave={mouseUp} ref={canvas} className="canvas"></canvas>            
+        <canvas onMouseDown={mouseDown} onMouseUp={mouseUp} onMouseMove={Draw} onMouseLeave={()=>{setIsMouseDown(false);  ctx?.beginPath();}} ref={canvas} className="canvas"></canvas>            
         </>
     );
 };
