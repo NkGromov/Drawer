@@ -13,7 +13,8 @@ const Draw: React.FC = () => {
     const [isRectangle, setIsRectangle] = useState<boolean>(false)
     const [isArc, setIsArc] = useState<boolean>(false)
     const [clickCoord, setClickCoord] = useState<number[][] | null>(null)
-    const [color, setColor] = useState<string | null>(null)
+    const [color, setColor] = useState<string>("Black")
+    const [size, setSize] = useState<number>(10)
     const mouseDown = (e: React.MouseEvent<HTMLElement>) => {
         setIsMouseDown(true)
         if(canvas.current) coord(e.clientX - canvas.current.offsetLeft,e.clientY- canvas.current.offsetTop)
@@ -42,18 +43,11 @@ const Draw: React.FC = () => {
     }
 
     const Draw = (e: React.MouseEvent<HTMLElement>) =>{
-        if(ctx) {
-            ctx.lineWidth = 20
-            if(isEraser) {
-            ctx.fillStyle = "White";
-            ctx.strokeStyle = "White"
-            }
-        }
         if( isMouseDown && canvas.current && ctx  && (isPencil || isEraser)){
             ctx.lineTo(e.clientX - canvas.current.offsetLeft, e.clientY - canvas.current.offsetTop);
             ctx.stroke();
             ctx.beginPath();
-            ctx.arc(e.clientX - canvas.current.offsetLeft,e.clientY - canvas.current.offsetTop, 10,0, Math.PI * 2);
+            ctx.arc(e.clientX - canvas.current.offsetLeft,e.clientY - canvas.current.offsetTop, size/2,0, Math.PI * 2);
             ctx.fill()
             ctx.beginPath()
             ctx.moveTo(e.clientX - canvas.current.offsetLeft, e.clientY - canvas.current.offsetTop);
@@ -76,11 +70,11 @@ const Draw: React.FC = () => {
             ctx.beginPath()
             ctx.arc(clickCoord[0][0], clickCoord[0][1], radius, 0, Math.PI * 2);
             ctx.fill();
-             ctx.beginPath();
+            ctx.beginPath();
             setClickCoord(null)
         }
     }
-    
+
     useEffect(()=>{
         changeStates(setIsPencil)
         if(canvas.current) {
@@ -99,6 +93,10 @@ const Draw: React.FC = () => {
         }
     }
     },[color,isEraser])
+
+    useEffect(()=>{
+        if(ctx) ctx.lineWidth = size
+    },[size,ctx])
     return (
         <>
         <button onClick={() => changeStates(setIsPencil)}>Карандаш</button>
@@ -107,7 +105,8 @@ const Draw: React.FC = () => {
         <button onClick={() => changeStates(setIsArc)}>Круглик</button>
         <button onClick={clear}>Очитить</button>
         <input onChange={(value) => setColor(value.target.value)} type="color" className="ColorPicker"></input>
-        <canvas onMouseDown={mouseDown} onMouseUp={mouseUp} onMouseMove={Draw} ref={canvas} className="canvas"></canvas>            
+        <input onChange={(value) => setSize(+value.target.value)} type="range"  min="2" max="40" step="1" value={size}></input>
+        <canvas onMouseDown={mouseDown} onMouseUp={mouseUp} onMouseMove={Draw} onMouseLeave={mouseUp} ref={canvas} className="canvas"></canvas>            
         </>
     );
 };
