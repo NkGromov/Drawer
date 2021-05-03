@@ -2,10 +2,20 @@ import React, {  Dispatch, SetStateAction, useRef } from 'react';
 import { useEffect } from 'react';
 import { useState } from 'react';
 
-
+interface history {
+    type: "PENCIL" | "ERASER" | "ARC" | "RECT"
+    x: number
+    y: number
+    width?: number
+    height?: number
+    radius?: number
+    added: boolean
+    size: number
+    color: string
+}
 
 const Draw: React.FC = () => {
-    let canvas = useRef<HTMLCanvasElement>(null)
+    const canvas = useRef<HTMLCanvasElement>(null)
     const ctx = canvas.current?.getContext('2d')
     const [isMouseDown, setIsMouseDown] = useState<boolean>(false)
     const [isPencil, setIsPencil] = useState<boolean>(false)
@@ -14,21 +24,24 @@ const Draw: React.FC = () => {
     const [isArc, setIsArc] = useState<boolean>(false)
     const [clickCoord, setClickCoord] = useState<number[][] | null>(null)
     const [color, setColor] = useState<string>("Black")
-    const [size, setSize] = useState<number>(10)
+    const [size, setSize] = useState<number>(20)
+    const [history, setHistory] = useState<history[] | null>(null)
 
     const mouseDown = (e: React.MouseEvent<HTMLElement>) => {
         setIsMouseDown(true)
         if(canvas.current) coord(e.clientX - canvas.current.offsetLeft,e.clientY- canvas.current.offsetTop)
     }
+
     const mouseUp = (e: React.MouseEvent<HTMLElement>) => {
         setIsMouseDown(false); 
+        setClickCoord(null)
         ctx?.beginPath();
         if(canvas.current) coord(e.clientX - canvas.current.offsetLeft,e.clientY- canvas.current.offsetTop)
     }
+
     const coord = (x: number,y:number) =>{
         if(clickCoord && (isRectangle || isArc)) setClickCoord([...clickCoord, clickCoord[1] = [x,y]])
-        else if(!clickCoord && (isRectangle || isArc)) setClickCoord([[x,y]])
-        
+        else if(!clickCoord && (isRectangle || isArc)) setClickCoord([[x,y]])   
     }
 
     const changeStates = (state: Dispatch<SetStateAction<boolean>>)=>{
@@ -41,12 +54,8 @@ const Draw: React.FC = () => {
 
     const clear = () =>{
         if(canvas.current && ctx) ctx.clearRect(0, 0, canvas.current.width, canvas.current.height)
-    }
-
-    const calcRectParam = (coordsArray: number[][]) =>{
-        const width: number = coordsArray[1][0] - coordsArray[0][0] 
-        const height: number = coordsArray[1][1] - coordsArray[0][1] 
-        createRect(coordsArray[0][0],coordsArray[0][1], width, height)
+        setClickCoord(null)
+        setHistory(null)
     }
 
     const createRect = (PosX: number, posY: number, width: number,height: number) =>{
@@ -55,50 +64,142 @@ const Draw: React.FC = () => {
         ctx?.fill();
     }
 
-    const calcArcParam = (coordsArray: number[][]) =>{
-        const dx: number = coordsArray[1][0] > coordsArray[0][0] ? coordsArray[1][0] - coordsArray[0][0] : coordsArray[0][0] - coordsArray[1][0]
-        const dy: number = coordsArray[1][1] > coordsArray[0][1] ? coordsArray[1][1] - coordsArray[0][1] : coordsArray[0][1] - coordsArray[1][1]
-        const radius: number = Math.sqrt(dx*dx+dy*dy)
-        createArc(coordsArray[0][0],coordsArray[0][1],radius)
-    }
-
     const createArc = (PosX: number, posY: number, radius: number) =>{
         ctx?.beginPath()
         ctx?.arc(PosX, posY, radius, 0, Math.PI * 2);
         ctx?.fill();
     }
 
-    const Draw = (e: React.MouseEvent<HTMLElement>) =>{
-        if(isMouseDown && canvas.current && ctx  && (isPencil || isEraser)){
-            ctx.lineTo(e.clientX - canvas.current.offsetLeft, e.clientY - canvas.current.offsetTop)
-            ctx.stroke();
-            createArc(e.clientX - canvas.current.offsetLeft,e.clientY - canvas.current.offsetTop, size/2)
-            ctx.beginPath()
-            ctx.moveTo(e.clientX - canvas.current.offsetLeft, e.clientY - canvas.current.offsetTop);
-        }
+    const addHistory = (param: history) =>{
 
-        if(isMouseDown && canvas.current && ctx  && clickCoord && (isRectangle || isArc)){
-            if(clickCoord.length === 2){
-                const prevWidth: number = clickCoord[1][0] - clickCoord[0][0] 
-                const prevHeight: number = clickCoord[1][1] - clickCoord[0][1] 
-                ctx.clearRect(clickCoord[0][0], clickCoord[0][1], prevWidth, prevHeight)
-            }
-            const newArray = clickCoord.splice(1,1)
-            setClickCoord(newArray)
-            setClickCoord([...clickCoord, clickCoord[1] = [e.clientX - canvas.current.offsetLeft, e.clientY - canvas.current.offsetTop]])
-            if(isRectangle) calcRectParam(clickCoord)
-            else if (isArc)  calcArcParam(clickCoord)
-          
-        }
-
-        if(isRectangle && ctx && clickCoord?.length === 2 && !isMouseDown) calcRectParam(clickCoord)
+        switch (param.type) {
+            case "PENCIL" || "ERASER":
+                if(history) setHistory([...history, {type: param.type, x: param.x, y: param.y, added: param.added, size: param.size, color: param.color}])
+                else setHistory([{type: param.type, x: param.x, y: param.y, added: param.added, size: param.size, color: param.color}])
+                break;
+            case "RECT":
+                if(history) setHistory([...history, {type: param.type, x: param.x, y: param.y, width: param.width, height: param.height, added: param.added, size: param.size, color: param.color}])
+                else setHistory([{type: param.type, x: param.x, y: param.y, width: param.width, height: param.height,added: param.added, size: param.size, color: param.color}])
+                break;
+            case "ARC":
+                if(history) setHistory([...history, {type: param.type, x: param.x, y: param.y, radius: param.radius,added: param.added, size: param.size, color: param.color}])
+                else setHistory([{type: param.type, x: param.x, y: param.y, radius: param.radius,added: param.added,size: param.size, color: param.color}])
+                break;
         
-        if(isArc && ctx && clickCoord?.length===2 && !isMouseDown) calcArcParam(clickCoord)
+            default:
+                break;
+        }
+     
+    }
+
+    const draw = (e: React.MouseEvent<HTMLElement>) =>{
+        let widthRect: number | null = null
+        let heightRect: number | null = null
+        let radius: number | null = null
+        let nowX: number | null = null
+        let nowY: number | null = null
+        let startX: number | null = null
+        let startY: number | null = null
+        let endX: number | null = null
+        let endY: number | null = null
+
+        if(clickCoord && clickCoord.length >= 1){
+            startX = clickCoord[0][0]
+            startY = clickCoord[0][1]
+        }
+
+        if(startX && startY && clickCoord && clickCoord.length >= 2){
+            endX = clickCoord[1][0]
+            endY = clickCoord[1][1]
+            const dx: number = endX > startX ? endX- startX : startX - endX
+            const dy: number = endY > startY ? endY - startY : startY - endY
+            widthRect = endX - startX
+            heightRect = endY - startY
+            radius = Math.sqrt(dx*dx+dy*dy)
+        }
+        
+        if(canvas.current){
+            nowX = e.clientX - canvas.current.offsetLeft
+            nowY = e.clientY - canvas.current.offsetTop
+        }
+
+        if(isMouseDown && nowX && nowY && ctx  && (isPencil || isEraser)){
+            ctx.lineTo(nowX, nowY)
+            ctx.stroke();
+            createArc(nowX,nowY, size/1.9)
+            ctx.beginPath()
+            ctx.moveTo(nowX, nowY);
+            addHistory({type: "PENCIL", x: nowX,y: nowY,added: true, size: size, color})
+        }
+
+        if(isMouseDown && startX && startY && nowX && nowY && clickCoord ){
+            if (history && (history[history.length-1].type === "RECT" || history[history.length-1].type === "ARC") && history[history.length-1].added===false ) {
+                const newHistory = history.splice(history.length-1,1)
+                setHistory(newHistory)
+                reDraw(history)
+            }
+                const newArray: number[][] = clickCoord.splice(1,1)
+                setClickCoord(newArray)
+                setClickCoord([...clickCoord, clickCoord[1] = [nowX, nowY]])
+                
+            if(widthRect && heightRect && isRectangle){
+                addHistory({type: "RECT", x: startX, y: startY, added: false, width: widthRect, height: heightRect, size, color})
+                createRect(startX , startY , widthRect , heightRect)
+            }
+            else if(isArc && radius){
+                addHistory({type: "ARC", x: startX, y: startY, added: false, radius, size, color})
+                createArc(startX, startY, radius)
+            }
+        }
+
+        if(isRectangle  && !isMouseDown && widthRect && heightRect && startX && startY) {
+            addHistory({type: "RECT", x: startX, y: startY, added: true, width: widthRect, height: heightRect, size, color})
+            createRect(startX , startY , widthRect , heightRect)
+            setClickCoord(null)
+        }
+      
+        if(isArc && startX && startY && radius  && !isMouseDown) {
+            addHistory({type: "ARC", x: startX, y: startY, added: true, radius, size, color})
+            createArc(startX, startY, radius)
+            setClickCoord(null)
+        }
         
     }
-    useEffect(()=>{
-        if(!isMouseDown) setClickCoord(null)
-    },[isMouseDown])
+
+    const reDraw = (history: history[]) => {
+        clear()
+        history.forEach((el)=>{
+            if(ctx){
+                ctx.fillStyle = el.color;
+                ctx.strokeStyle = el.color;
+                ctx.lineWidth = el.size
+                switch (el.type) {
+                    case "PENCIL" || "ERASER": 
+                        ctx.lineTo(el.x, el.y)
+                        ctx.stroke();
+                        createArc(el.x, el.y, size/1.9)
+                        ctx.beginPath()
+                        ctx.moveTo(el.x, el.y);
+                        break;
+                    case "RECT": 
+                        if(el.width && el.height) createRect(el.x,el.y, el.width, el.height)
+                        ctx.beginPath()
+                        break;
+                    case "ARC": 
+                        if(el.radius) createArc(el.x,el.y, el.radius)
+                        ctx.beginPath()
+                        break;
+                    default:
+                        break;
+                }
+                ctx.fillStyle = color;
+                ctx.strokeStyle = color;
+                ctx.lineWidth = size
+            }
+        })
+
+    }
+
     useEffect(()=>{
         changeStates(setIsPencil)
         if(canvas.current) {
@@ -112,8 +213,8 @@ const Draw: React.FC = () => {
             ctx.fillStyle = 'White';
             ctx.strokeStyle = 'White';
         }else {
-            ctx.fillStyle = `${color}`;
-            ctx.strokeStyle = `${color}`;
+            ctx.fillStyle = color;
+            ctx.strokeStyle = color;
         }
     }
     },[color,isEraser])
@@ -130,7 +231,7 @@ const Draw: React.FC = () => {
         <button onClick={clear}>Очитить</button>
         <input onChange={(value) => setColor(value.target.value)} type="color" className="ColorPicker"></input>
         <input onChange={(value) => setSize(+value.target.value)} type="range"  min="2" max="40" step="1" value={size}></input>
-        <canvas onMouseDown={mouseDown} onMouseUp={mouseUp} onMouseMove={Draw} onMouseLeave={()=>{setIsMouseDown(false);  ctx?.beginPath();}} ref={canvas} className="canvas"></canvas>            
+        <canvas onMouseDown={mouseDown} onMouseUp={mouseUp} onMouseMove={draw} onMouseLeave={()=>{setIsMouseDown(false);  ctx?.beginPath();}} ref={canvas} className="canvas"></canvas>            
         </>
     );
 };
