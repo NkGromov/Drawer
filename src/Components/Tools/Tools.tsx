@@ -5,8 +5,10 @@ import { AppStateType } from "../../Redux/store";
 import { tool } from "../../Types/types";
 import pencil from "../../images/pencil.svg";
 import eraser from "../../images/eraser.svg";
-
-const Tools: React.FC = () => {
+interface props {
+    clear: (withHistory: boolean) => void;
+}
+const Tools: React.FC<props> = ({ clear }) => {
     const dispatch = useDispatch();
     const colorRef = useRef<HTMLInputElement>(null);
     const isPencil = useSelector((state: AppStateType) => state.DrawReducer.isPencil);
@@ -32,15 +34,12 @@ const Tools: React.FC = () => {
                 </button>
                 <button className="tools__button tools__rect" onClick={() => setActiveState("RECT", colorRef.current?.value || "")} disabled={isRectangle}></button>
                 <button className="tools__button tools__arc" onClick={() => setActiveState("ARC", colorRef.current?.value || "")} disabled={isArc}></button>
-                {/* <button className="tools__button" onClick={() => clear(true)}>Очитить</button> */}
-                <input
-                    ref={colorRef}
-                    onChange={(value) => dispatch(actions.changeColor(value.target.value))}
-                    type="color"
-                    disabled={isEraser}
-                    className="tools__colorPicker"
-                ></input>
+
                 <input className="tools__size" onChange={(value) => dispatch(actions.changeSize(+value.target.value))} type="range" min="2" max="40" step="1" value={size}></input>
+                <input ref={colorRef} onChange={(value) => dispatch(actions.changeColor(value.target.value))} type="color" disabled={isEraser} className="tools__colorPicker" />
+                <button className="tools__button tools__clear" onClick={() => clear(true)}>
+                    Очиcтить
+                </button>
             </div>
         </div>
     );

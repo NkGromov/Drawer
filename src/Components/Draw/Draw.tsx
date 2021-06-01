@@ -184,10 +184,6 @@ const Draw: React.FC = () => {
         ctx.lineWidth = size;
     };
 
-    const zoomCanvas = (e: React.WheelEvent) => {
-        setZoom((prev) => prev + e.deltaY);
-    };
-
     useEffect(() => {
         if (canvas.current) {
             canvas.current.width = 4000;
@@ -207,14 +203,9 @@ const Draw: React.FC = () => {
         if (ctx) ctx.lineWidth = size;
     }, [size, ctx]);
 
-    useEffect(() => {
-        // console.log(zoom);
-        // let zoomScale = zoom / 100;
-        // if (ctx) ctx.scale(zoomScale, zoomScale);
-    }, [zoom]);
     return (
         <>
-            <Tools />
+            <Tools clear={clear} />
 
             <canvas
                 onMouseDown={mouseDown}
@@ -225,7 +216,6 @@ const Draw: React.FC = () => {
                     ctx?.beginPath();
                 }}
                 ref={canvas}
-                onWheel={zoomCanvas}
                 className="canvas"
             ></canvas>
         </>

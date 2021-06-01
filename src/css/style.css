@@ -13,7 +13,7 @@ body {
 input[type="color"] {
     -webkit-appearance: none;
     border: none;
-    width: 40px;
+    width: 90px;
     height: 40px;
     cursor: pointer;
 }
@@ -25,10 +25,10 @@ input[type="color"]::-webkit-color-swatch {
 }
 .tools__wrapper {
     display: grid;
-    grid-template-columns: 1fr;
+    grid-template-columns: 1fr 1fr;
     row-gap: 10px;
     position: fixed;
-    width: 40px;
+    width: 100px;
     left: 20px;
     top: 20px;
 }
@@ -69,11 +69,17 @@ input[type="color"]::-webkit-color-swatch {
     height: 18px;
     border-radius: 50%;
 }
+.tools__colorPicker {
+    grid-column: 1/3;
+}
 .tools__colorPicker:disabled {
     opacity: 0.5;
 }
 .tools__size {
-    writing-mode: bt-lr;
-    -webkit-appearance: slider-vertical;
-    width: 40px;
+    width: 90px;
+    grid-column: 1/3;
+}
+.tools__clear {
+    width: 90px;
+    grid-column: 1/3;
 }
