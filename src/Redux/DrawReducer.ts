@@ -6,7 +6,7 @@ const initialState = {
     isEraser: false,
     isRectangle: false,
     isArc: false,
-    color: "Black",
+    color: "#000000",
     size: 20,
     history: [] as history[],
 };

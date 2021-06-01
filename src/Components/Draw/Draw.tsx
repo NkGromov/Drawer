@@ -1,16 +1,15 @@
-import React, { Dispatch, SetStateAction, useRef } from "react";
-import { useCallback } from "react";
+import React, { useCallback, useRef } from "react";
 import { useEffect } from "react";
 import { useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { actions } from "../../Redux/DrawReducer";
 import { AppStateType } from "../../Redux/store";
-import { history, tool } from "../../Types/types";
+import { history } from "../../Types/types";
+import Tools from "../Tools/Tools";
 
 const Draw: React.FC = () => {
     const dispatch = useDispatch();
     const canvas = useRef<HTMLCanvasElement>(null);
-    const colorRef = useRef<HTMLInputElement>(null);
     const historyRef = useRef<history[] | null>(null);
     const ctx = canvas.current?.getContext("2d");
     const isPencil = useSelector((state: AppStateType) => state.DrawReducer.isPencil);
@@ -22,6 +21,7 @@ const Draw: React.FC = () => {
     const history = useSelector((state: AppStateType) => state.DrawReducer.history);
     const [isMouseDown, setIsMouseDown] = useState<boolean>(false);
     const [clickCoord, setClickCoord] = useState<number[][] | null>(null);
+    const [zoom, setZoom] = useState<number>(0);
     historyRef.current = history;
 
     const mouseDown = (e: React.MouseEvent<HTMLElement>) => {
@@ -45,9 +45,10 @@ const Draw: React.FC = () => {
         else if (!clickCoord && (isRectangle || isArc)) setClickCoord([[x, y]]);
     };
 
-    const clear = () => {
+    const clear = (withHistory: boolean = false) => {
         if (canvas.current) ctx?.clearRect(0, 0, canvas.current.width, canvas.current.height);
         setClickCoord(null);
+        if (withHistory) dispatch(actions.setHistory([]));
     };
 
     const createRect = (PosX: number, posY: number, width: number, height: number) => {
@@ -60,11 +61,6 @@ const Draw: React.FC = () => {
         ctx?.beginPath();
         ctx?.arc(PosX, posY, radius, 0, Math.PI * 2);
         ctx?.fill();
-    };
-
-    const setActiveState = (tool: tool, color: string) => {
-        dispatch(actions.switchTool(tool));
-        dispatch(actions.changeColor(color));
     };
 
     // const backStep = useCallback((e: KeyboardEvent) => {
@@ -120,12 +116,7 @@ const Draw: React.FC = () => {
         }
 
         if (isMouseDown && startX && startY && nowX && nowY && clickCoord) {
-            if (
-                history &&
-                history.length > 0 &&
-                history[history.length - 1].added === false &&
-                (history[history.length - 1].type === "RECT" || history[history.length - 1].type === "ARC")
-            ) {
+            if (history.length > 0 && history[history.length - 1].added === false && (history[history.length - 1].type === "RECT" || history[history.length - 1].type === "ARC")) {
                 history.splice(history.length - 1, 1);
                 reDraw(history);
             }
@@ -193,17 +184,18 @@ const Draw: React.FC = () => {
         ctx.lineWidth = size;
     };
 
-    // useEffect(() => {
-    //     document.addEventListener("keydown", backStep);
-    //     return () => document.removeEventListener("keydown", backStep);
-    // }, []);
+    const zoomCanvas = (e: React.WheelEvent) => {
+        setZoom((prev) => prev + e.deltaY);
+    };
 
     useEffect(() => {
         if (canvas.current) {
-            canvas.current.width = window.innerWidth;
-            canvas.current.height = window.innerHeight;
+            canvas.current.width = 4000;
+            canvas.current.height = 4000;
         }
-    }, [window.innerWidth, window.innerHeight]);
+        //     document.addEventListener("keydown", backStep);
+        //     return () => document.removeEventListener("keydown", backStep);
+    }, []);
 
     useEffect(() => {
         if (!ctx) return;
@@ -214,30 +206,16 @@ const Draw: React.FC = () => {
     useEffect(() => {
         if (ctx) ctx.lineWidth = size;
     }, [size, ctx]);
+
+    useEffect(() => {
+        // console.log(zoom);
+        // let zoomScale = zoom / 100;
+        // if (ctx) ctx.scale(zoomScale, zoomScale);
+    }, [zoom]);
     return (
         <>
-            <button onClick={() => setActiveState("PENCIL", colorRef.current?.value || "")} disabled={isPencil}>
-                Карандаш
-            </button>
-            <button onClick={() => setActiveState("ERASER", "White")} disabled={isEraser}>
-                Ластик
-            </button>
-            <button onClick={() => setActiveState("RECT", colorRef.current?.value || "")} disabled={isRectangle}>
-                Квадрат
-            </button>
-            <button onClick={() => setActiveState("ARC", colorRef.current?.value || "")} disabled={isArc}>
-                Круглик
-            </button>
-            <button
-                onClick={() => {
-                    clear();
-                    dispatch(actions.setHistory([]));
-                }}
-            >
-                Очитить
-            </button>
-            <input ref={colorRef} onChange={(value) => dispatch(actions.changeColor(value.target.value))} type="color" className="ColorPicker"></input>
-            <input onChange={(value) => dispatch(actions.changeSize(+value.target.value))} type="range" min="2" max="40" step="1" value={size}></input>
+            <Tools />
+
             <canvas
                 onMouseDown={mouseDown}
                 onMouseUp={mouseUp}
@@ -247,6 +225,7 @@ const Draw: React.FC = () => {
                     ctx?.beginPath();
                 }}
                 ref={canvas}
+                onWheel={zoomCanvas}
                 className="canvas"
             ></canvas>
         </>
