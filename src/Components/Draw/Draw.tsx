@@ -1,34 +1,28 @@
 import React, { Dispatch, SetStateAction, useRef } from "react";
+import { useCallback } from "react";
 import { useEffect } from "react";
 import { useState } from "react";
-
-type figure = "PENCIL" | "ERASER" | "ARC" | "RECT";
-
-interface history {
-    type: figure;
-    x: number;
-    y: number;
-    width?: number;
-    height?: number;
-    radius?: number;
-    added: boolean;
-    size: number;
-    color: string;
-}
+import { useDispatch, useSelector } from "react-redux";
+import { actions } from "../../Redux/DrawReducer";
+import { AppStateType } from "../../Redux/store";
+import { history, tool } from "../../Types/types";
 
 const Draw: React.FC = () => {
+    const dispatch = useDispatch();
     const canvas = useRef<HTMLCanvasElement>(null);
     const colorRef = useRef<HTMLInputElement>(null);
+    const historyRef = useRef<history[] | null>(null);
     const ctx = canvas.current?.getContext("2d");
+    const isPencil = useSelector((state: AppStateType) => state.DrawReducer.isPencil);
+    const isEraser = useSelector((state: AppStateType) => state.DrawReducer.isEraser);
+    const isRectangle = useSelector((state: AppStateType) => state.DrawReducer.isRectangle);
+    const isArc = useSelector((state: AppStateType) => state.DrawReducer.isArc);
+    const color = useSelector((state: AppStateType) => state.DrawReducer.color);
+    const size = useSelector((state: AppStateType) => state.DrawReducer.size);
+    const history = useSelector((state: AppStateType) => state.DrawReducer.history);
     const [isMouseDown, setIsMouseDown] = useState<boolean>(false);
-    const [isPencil, setIsPencil] = useState<boolean>(false);
-    const [isEraser, setIsEraser] = useState<boolean>(false);
-    const [isRectangle, setIsRectangle] = useState<boolean>(true);
-    const [isArc, setIsArc] = useState<boolean>(false);
     const [clickCoord, setClickCoord] = useState<number[][] | null>(null);
-    const [color, setColor] = useState<string>("Black");
-    const [size, setSize] = useState<number>(20);
-    const [history, setHistory] = useState<history[] | null>(null);
+    historyRef.current = history;
 
     const mouseDown = (e: React.MouseEvent<HTMLElement>) => {
         setIsMouseDown(true);
@@ -38,15 +32,10 @@ const Draw: React.FC = () => {
     const mouseUp = (e: React.MouseEvent<HTMLElement>) => {
         setIsMouseDown(false);
         setClickCoord(null);
-        if (history)
-            setHistory((prev: history[] | null) => {
-                if (!prev) return prev;
-                const newState: history[] = prev.reverse();
-                const indexLast: number = newState.findIndex((el) => el.type === "PENCIL");
-                if (indexLast !== -1) newState[indexLast].added = true;
-                return newState.reverse();
-            });
-
+        const newState: history[] = history.reverse();
+        const indexLast: number = newState.findIndex((el) => el.type === "PENCIL");
+        if (indexLast !== -1) newState[indexLast].added = true;
+        dispatch(actions.setHistory(newState.reverse()));
         ctx?.beginPath();
         if (canvas.current) coord(e.clientX - canvas.current.offsetLeft, e.clientY - canvas.current.offsetTop);
     };
@@ -54,14 +43,6 @@ const Draw: React.FC = () => {
     const coord = (x: number, y: number) => {
         if (clickCoord && (isRectangle || isArc)) setClickCoord([...clickCoord, (clickCoord[1] = [x, y])]);
         else if (!clickCoord && (isRectangle || isArc)) setClickCoord([[x, y]]);
-    };
-
-    const changeStates = (state: Dispatch<SetStateAction<boolean>>) => {
-        setIsEraser(false);
-        setIsPencil(false);
-        setIsRectangle(false);
-        setIsArc(false);
-        state(true);
     };
 
     const clear = () => {
@@ -81,102 +62,22 @@ const Draw: React.FC = () => {
         ctx?.fill();
     };
 
-    const setActiveState = (state: Dispatch<SetStateAction<boolean>>) => {
-        changeStates(state);
-        if (colorRef.current?.value) {
-            setColor(colorRef.current?.value);
-        }
+    const setActiveState = (tool: tool, color: string) => {
+        dispatch(actions.switchTool(tool));
+        dispatch(actions.changeColor(color));
     };
 
-    const addHistory = (param: history) => {
-        switch (param.type) {
-            case "PENCIL":
-                if (history && history.length > 0)
-                    setHistory([
-                        ...history,
-                        {
-                            type: param.type,
-                            x: param.x,
-                            y: param.y,
-                            added: param.added,
-                            size: param.size,
-                            color: param.color,
-                        },
-                    ]);
-                else
-                    setHistory([
-                        {
-                            type: param.type,
-                            x: param.x,
-                            y: param.y,
-                            added: param.added,
-                            size: param.size,
-                            color: param.color,
-                        },
-                    ]);
-                break;
-            case "RECT":
-                if (history)
-                    setHistory([
-                        ...history,
-                        {
-                            type: param.type,
-                            x: param.x,
-                            y: param.y,
-                            width: param.width,
-                            height: param.height,
-                            added: param.added,
-                            size: param.size,
-                            color: param.color,
-                        },
-                    ]);
-                else
-                    setHistory([
-                        {
-                            type: param.type,
-                            x: param.x,
-                            y: param.y,
-                            width: param.width,
-                            height: param.height,
-                            added: param.added,
-                            size: param.size,
-                            color: param.color,
-                        },
-                    ]);
-
-                break;
-            case "ARC":
-                if (history)
-                    setHistory([
-                        ...history,
-                        {
-                            type: param.type,
-                            x: param.x,
-                            y: param.y,
-                            radius: param.radius,
-                            added: param.added,
-                            size: param.size,
-                            color: param.color,
-                        },
-                    ]);
-                else
-                    setHistory([
-                        {
-                            type: param.type,
-                            x: param.x,
-                            y: param.y,
-                            radius: param.radius,
-                            added: param.added,
-                            size: param.size,
-                            color: param.color,
-                        },
-                    ]);
-                break;
-
-            default:
-                break;
-        }
-    };
+    // const backStep = useCallback((e: KeyboardEvent) => {
+    //     const history = historyRef.current;
+    //     if (e.ctrlKey && e.keyCode === 90 && history) {
+    //         const index = history.reverse().findIndex((el: history, index: number) => el.added === true && index !== 0);
+    //         history.reverse();
+    //         const newHis = history.slice(0, index);
+    //         console.log(newHis);
+    //         setHistory(newHis);
+    //         reDraw(newHis);
+    //     }
+    // }, []);
 
     const draw = (e: React.MouseEvent<HTMLElement>) => {
         let widthRect: number | null = null,
@@ -215,14 +116,7 @@ const Draw: React.FC = () => {
             createArc(nowX, nowY, size / 2);
             ctx.beginPath();
             ctx.moveTo(nowX, nowY);
-            addHistory({
-                type: "PENCIL",
-                x: nowX,
-                y: nowY,
-                added: false,
-                size: size,
-                color,
-            });
+            dispatch(actions.addHistory({ type: "PENCIL", x: nowX, y: nowY, added: false, size: size, color }));
         }
 
         if (isMouseDown && startX && startY && nowX && nowY && clickCoord) {
@@ -240,62 +134,31 @@ const Draw: React.FC = () => {
             setClickCoord([...clickCoord, (clickCoord[1] = [nowX, nowY])]);
 
             if (widthRect && heightRect && isRectangle) {
-                addHistory({
-                    type: "RECT",
-                    x: startX,
-                    y: startY,
-                    added: false,
-                    width: widthRect,
-                    height: heightRect,
-                    size,
-                    color,
-                });
+                dispatch(actions.addHistory({ type: "RECT", x: startX, y: startY, added: false, width: widthRect, height: heightRect, size, color }));
+
                 createRect(startX, startY, widthRect, heightRect);
             } else if (isArc && radius) {
-                addHistory({
-                    type: "ARC",
-                    x: startX,
-                    y: startY,
-                    added: false,
-                    radius,
-                    size,
-                    color,
-                });
+                dispatch(actions.addHistory({ type: "ARC", x: startX, y: startY, added: false, radius, size, color }));
+
                 createArc(startX, startY, radius);
             }
         }
 
         if (isRectangle && !isMouseDown && widthRect && heightRect && startX && startY) {
-            addHistory({
-                type: "RECT",
-                x: startX,
-                y: startY,
-                added: true,
-                width: widthRect,
-                height: heightRect,
-                size,
-                color,
-            });
+            dispatch(actions.addHistory({ type: "RECT", x: startX, y: startY, added: true, width: widthRect, height: heightRect, size, color }));
+
             createRect(startX, startY, widthRect, heightRect);
             setClickCoord(null);
         }
 
         if (isArc && startX && startY && radius && !isMouseDown) {
-            addHistory({
-                type: "ARC",
-                x: startX,
-                y: startY,
-                added: true,
-                radius,
-                size,
-                color,
-            });
+            dispatch(actions.addHistory({ type: "ARC", x: startX, y: startY, added: true, radius, size, color }));
+
             createArc(startX, startY, radius);
             setClickCoord(null);
         }
     };
 
-    //  console.log(history);
     const reDraw = (history: history[]) => {
         clear();
         if (!ctx) return;
@@ -330,6 +193,11 @@ const Draw: React.FC = () => {
         ctx.lineWidth = size;
     };
 
+    // useEffect(() => {
+    //     document.addEventListener("keydown", backStep);
+    //     return () => document.removeEventListener("keydown", backStep);
+    // }, []);
+
     useEffect(() => {
         if (canvas.current) {
             canvas.current.width = window.innerWidth;
@@ -348,34 +216,28 @@ const Draw: React.FC = () => {
     }, [size, ctx]);
     return (
         <>
-            <button onClick={() => setActiveState(setIsPencil)} disabled={isPencil}>
+            <button onClick={() => setActiveState("PENCIL", colorRef.current?.value || "")} disabled={isPencil}>
                 Карандаш
             </button>
-            <button
-                onClick={() => {
-                    changeStates(setIsEraser);
-                    setColor("White");
-                }}
-                disabled={isEraser}
-            >
+            <button onClick={() => setActiveState("ERASER", "White")} disabled={isEraser}>
                 Ластик
             </button>
-            <button onClick={() => setActiveState(setIsRectangle)} disabled={isRectangle}>
+            <button onClick={() => setActiveState("RECT", colorRef.current?.value || "")} disabled={isRectangle}>
                 Квадрат
             </button>
-            <button onClick={() => setActiveState(setIsArc)} disabled={isArc}>
+            <button onClick={() => setActiveState("ARC", colorRef.current?.value || "")} disabled={isArc}>
                 Круглик
             </button>
             <button
                 onClick={() => {
                     clear();
-                    setHistory(null);
+                    dispatch(actions.setHistory([]));
                 }}
             >
                 Очитить
             </button>
-            <input ref={colorRef} onChange={(value) => setColor(value.target.value)} type="color" className="ColorPicker"></input>
-            <input onChange={(value) => setSize(+value.target.value)} type="range" min="2" max="40" step="1" value={size}></input>
+            <input ref={colorRef} onChange={(value) => dispatch(actions.changeColor(value.target.value))} type="color" className="ColorPicker"></input>
+            <input onChange={(value) => dispatch(actions.changeSize(+value.target.value))} type="range" min="2" max="40" step="1" value={size}></input>
             <canvas
                 onMouseDown={mouseDown}
                 onMouseUp={mouseUp}
