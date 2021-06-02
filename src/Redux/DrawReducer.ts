@@ -9,6 +9,7 @@ const initialState = {
     color: "#000000",
     size: 20,
     history: [] as history[],
+    historyNext: [] as history[],
 };
 
 export type initialStateDraw = typeof initialState;
@@ -32,7 +33,13 @@ const DrawReducer = (state = initialState, action: ActionsTypes): initialStateDr
         case "DRAW_ADD_HISTORY":
             return { ...state, history: [...state.history, action.history] };
         case "DRAW_SET_HISTORY":
-            return { ...state, history: [...action.history] };
+            const newHis = [...action.history];
+            let nextHis: history[] = [];
+            if (newHis.length < state.history.length && state.historyNext.length === 0) nextHis = [...state.history];
+            else if (state.historyNext.length !== 0) nextHis = [...state.historyNext];
+            else if (newHis.length === 0) nextHis = [...state.historyNext];
+            if (state.historyNext.length !== 0 && state.historyNext.length <= newHis.length) nextHis = [];
+            return { ...state, history: newHis, historyNext: nextHis };
         default:
             return state;
     }

@@ -23,6 +23,9 @@ input[type="color"]::-webkit-color-swatch-wrapper {
 input[type="color"]::-webkit-color-swatch {
     border: none;
 }
+#root {
+    overflow: hidden;
+}
 .tools__wrapper {
     display: grid;
     grid-template-columns: 1fr 1fr;
@@ -82,4 +85,13 @@ input[type="color"]::-webkit-color-swatch {
 .tools__clear {
     width: 90px;
     grid-column: 1/3;
+}
+.tools__prev img {
+    transform: rotate(176deg);
+    width: 100%;
+}
+.tools__next img {
+    transform: rotate(176deg);
+    transform: rotateX(180deg);
+    width: 100%;
 }

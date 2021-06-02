@@ -1,4 +1,4 @@
-import React, { useCallback, useRef } from "react";
+import React, { MouseEvent, TouchEvent, useRef } from "react";
 import { useEffect } from "react";
 import { useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
@@ -19,25 +19,43 @@ const Draw: React.FC = () => {
     const color = useSelector((state: AppStateType) => state.DrawReducer.color);
     const size = useSelector((state: AppStateType) => state.DrawReducer.size);
     const history = useSelector((state: AppStateType) => state.DrawReducer.history);
+    const historyNext = useSelector((state: AppStateType) => state.DrawReducer.historyNext);
     const [isMouseDown, setIsMouseDown] = useState<boolean>(false);
     const [clickCoord, setClickCoord] = useState<number[][] | null>(null);
-    const [zoom, setZoom] = useState<number>(0);
     historyRef.current = history;
 
-    const mouseDown = (e: React.MouseEvent<HTMLElement>) => {
+    const mouseDown = (e: MouseEvent | TouchEvent) => {
+        let clientX = 0;
+        let clientY = 0;
         setIsMouseDown(true);
-        if (canvas.current) coord(e.clientX - canvas.current.offsetLeft, e.clientY - canvas.current.offsetTop);
+        if ("clientX" in e) {
+            clientX = e.clientX;
+            clientY = e.clientY;
+        } else if ("touches" in e) {
+            clientX = e.touches[0].clientX;
+            clientY = e.touches[0].clientY;
+        }
+        if (canvas.current) coord(clientX - canvas.current.offsetLeft, clientY - canvas.current.offsetTop);
     };
 
-    const mouseUp = (e: React.MouseEvent<HTMLElement>) => {
+    const mouseUp = (e: MouseEvent | TouchEvent) => {
+        let clientX = 0;
+        let clientY = 0;
         setIsMouseDown(false);
         setClickCoord(null);
+        if ("clientX" in e) {
+            clientX = e.clientX;
+            clientY = e.clientY;
+        } else if ("touches" in e) {
+            clientX = e.changedTouches[0].clientX;
+            clientY = e.changedTouches[0].clientY;
+        }
         const newState: history[] = history.reverse();
         const indexLast: number = newState.findIndex((el) => el.type === "PENCIL");
         if (indexLast !== -1) newState[indexLast].added = true;
         dispatch(actions.setHistory(newState.reverse()));
         ctx?.beginPath();
-        if (canvas.current) coord(e.clientX - canvas.current.offsetLeft, e.clientY - canvas.current.offsetTop);
+        if (canvas.current) coord(clientX - canvas.current.offsetLeft, clientY - canvas.current.offsetTop);
     };
 
     const coord = (x: number, y: number) => {
@@ -63,19 +81,7 @@ const Draw: React.FC = () => {
         ctx?.fill();
     };
 
-    // const backStep = useCallback((e: KeyboardEvent) => {
-    //     const history = historyRef.current;
-    //     if (e.ctrlKey && e.keyCode === 90 && history) {
-    //         const index = history.reverse().findIndex((el: history, index: number) => el.added === true && index !== 0);
-    //         history.reverse();
-    //         const newHis = history.slice(0, index);
-    //         console.log(newHis);
-    //         setHistory(newHis);
-    //         reDraw(newHis);
-    //     }
-    // }, []);
-
-    const draw = (e: React.MouseEvent<HTMLElement>) => {
+    const draw = (e: MouseEvent | TouchEvent) => {
         let widthRect: number | null = null,
             heightRect: number | null = null,
             radius: number | null = null,
@@ -101,9 +107,12 @@ const Draw: React.FC = () => {
             radius = Math.sqrt(dx * dx + dy * dy);
         }
 
-        if (canvas.current) {
+        if (canvas.current && "clientX" in e) {
             nowX = e.clientX - canvas.current.offsetLeft;
             nowY = e.clientY - canvas.current.offsetTop;
+        } else if (canvas.current && "touches" in e) {
+            nowX = e.touches[0].clientX - canvas.current.offsetLeft;
+            nowY = e.touches[0].clientY - canvas.current.offsetTop;
         }
 
         if (isMouseDown && nowX && nowY && ctx && (isPencil || isEraser)) {
@@ -189,8 +198,6 @@ const Draw: React.FC = () => {
             canvas.current.width = 4000;
             canvas.current.height = 4000;
         }
-        //     document.addEventListener("keydown", backStep);
-        //     return () => document.removeEventListener("keydown", backStep);
     }, []);
 
     useEffect(() => {
@@ -205,12 +212,15 @@ const Draw: React.FC = () => {
 
     return (
         <>
-            <Tools clear={clear} />
+            <Tools clear={clear} reDraw={reDraw} />
 
             <canvas
                 onMouseDown={mouseDown}
                 onMouseUp={mouseUp}
                 onMouseMove={draw}
+                onTouchMove={draw}
+                onTouchEnd={mouseUp}
+                onTouchStart={mouseDown}
                 onMouseLeave={() => {
                     setIsMouseDown(false);
                     ctx?.beginPath();
